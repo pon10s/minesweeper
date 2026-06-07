@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>マインスイーパー</title>
+  <link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+  <div class="ms-app">
+    <div class="ms-panel">
+      <!-- ヘッダー：残り地雷カウンター / ニコちゃん / タイマー -->
+      <div class="ms-header">
+        <div class="ms-counter" id="mineCounter">010</div>
+        <button class="ms-face" id="faceBtn" type="button" aria-label="リセット">🙂</button>
+        <div class="ms-counter" id="timer">000</div>
+      </div>
+      <!-- 盤面 -->
+      <div class="ms-board" id="board"></div>
+    </div>
+
+    <!-- 下部コントロール -->
+    <div class="ms-controls">
+      <div class="ms-row ms-difficulty">
+        <span class="ms-label">難易度</span>
+        <button class="ms-btn is-active" data-level="beginner" type="button">初級</button>
+        <button class="ms-btn" data-level="intermediate" type="button">中級</button>
+        <button class="ms-btn" data-level="expert" type="button">上級</button>
+      </div>
+      <div class="ms-row ms-mode">
+        <span class="ms-label">モード</span>
+        <button class="ms-btn is-active" data-mode="open" type="button">⛏ 開く</button>
+        <button class="ms-btn" data-mode="flag" type="button">🚩 旗</button>
+      </div>
+      <div class="ms-row ms-best">
+        <span class="ms-label">ベスト</span>
+        <span id="bestTime">--:--</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="src/game.js"></script>
+  <script src="src/ui.js"></script>
+  <script src="src/main.js"></script>
+</body>
+</html>
