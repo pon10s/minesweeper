@@ -45,6 +45,7 @@
   var currentLevel = 'beginner';
   var timerId = null;        // タイマーの setInterval ID
   var seconds = 0;           // 経過秒
+  var lastFitWidth = 0;      // 最後にマスサイズを合わせたときの画面幅
 
   // 長押し判定用
   var LONG_PRESS_MS = 150;   // この時間押し続けたら旗（タップ～0.12秒と差をつけつつ短く）
@@ -114,6 +115,7 @@
     var cell = Math.floor(Math.min(availW / game.cols, availH / game.rows, MAX_CELL));
     if (cell < MIN_CELL) cell = MIN_CELL; // 下限。これ以下になる極小画面のみスクロール許容
     document.documentElement.style.setProperty('--cell', cell + 'px');
+    lastFitWidth = window.innerWidth;
   }
 
   /** 指定難易度で新しいゲームを開始し、画面を描画する */
@@ -453,8 +455,12 @@
     el.hintBtn.addEventListener('click', onHint);
     el.rankBtn.addEventListener('click', function () { showRanking(currentLevel); });
 
-    // 画面サイズ・向きが変わったらマスサイズを再調整
-    window.addEventListener('resize', fitBoard);
+    // 画面の「幅」が変わったときだけマスを再調整する。
+    // （iOSはピンチ拡大やアドレスバー開閉で高さだけ変わり resize が頻発する。
+    //   そのたびに盤面を作り直すと拡大状態が崩れる／横ずれするので、幅変化のみに限定）
+    window.addEventListener('resize', function () {
+      if (window.innerWidth !== lastFitWidth) fitBoard();
+    });
     window.addEventListener('orientationchange', fitBoard);
 
     el.difficultyBtns.forEach(function (b) {
