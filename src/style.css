@@ -218,6 +218,11 @@ html, body {
 
 /* ヒントの説明文（盤面のすぐ下・ヒントボタンの直下） */
 .ms-hint-msg {
+  /* width:0 + min-width:100% で、長い文がパネル幅を広げない（盤面幅で折り返す） */
+  width: 0;
+  min-width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
   margin-top: 6px;
   min-height: 1.2em;
   font-size: 13px;

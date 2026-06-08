@@ -216,6 +216,21 @@
       eq('findHint: 誤旗の数字は使わず guess', h.kind, 'guess');
     })();
 
+    // 18. findHint：部分集合の法則（1-2 定石 → 差分マスが地雷）
+    (function () {
+      // 上段(0,0)(0,1)(0,2)を1・2・1で開く（floodしない）、下段に地雷(1,0)(1,2)
+      var g = MS.createGame(3, 3, 2);
+      MS.setMines(g, [[1, 0], [1, 2]]);
+      MS.reveal(g, 0, 0); MS.reveal(g, 0, 1); MS.reveal(g, 0, 2);
+      // 基本ルールでは解けない（need≠0, need≠hidden）→ 部分集合で確定するはず
+      var h = MS.findHint(g);
+      eq('findHint 定石: rule=subset', h.rule, 'subset');
+      eq('findHint 定石: kind=mine', h.kind, 'mine');
+      var allMine = h.targets.every(function (t) { return g.cells[t[0]][t[1]].mine === true; });
+      check('findHint 定石: 対象は全部地雷', h.targets.length >= 1 && allMine);
+      check('findHint 定石: 根拠は数字2つ', h.froms.length === 2);
+    })();
+
     render();
   }
 

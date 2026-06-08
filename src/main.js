@@ -152,22 +152,30 @@
 
   /** ヒントの理由文を日本語で組み立てる。 */
   function hintReason(h) {
+    if (h.kind === 'guess') {
+      if (h.firstMove) return '最初の一手は手がかりが無いので、どこを開けても運だよ。角あたりが無難。';
+      return 'いま確実にわかるマスは無さそう…ここからは推測。数字の多いところの近くから攻めると手がかりが増えるよ。';
+    }
+    if (h.rule === 'subset') {
+      // 定石（部分集合の法則）：2つの数字を見くらべる
+      if (h.kind === 'safe') {
+        return 'オレンジの2つの数字を見くらべてね。大きいほうの地雷は、共通の範囲だけで足りるよ。' +
+          'だから外側の緑のマス' + h.diffCount + 'こは安全に開けられる！';
+      }
+      return 'オレンジの2つの数字を見くらべてね。大きいほうの地雷は、共通の範囲ぶんを除くと、' +
+        '外側の' + h.diffCount + 'マスにちょうど残る。だから赤いマス' + h.diffCount + 'こは全部地雷。🚩を立てよう！';
+    }
+    // 基本ルール（単一の数字）
     if (h.kind === 'safe') {
       var nSafe = h.targets.length;
       return 'オレンジで囲った『' + h.number + '』のまわりには、もう🚩が' + h.flags +
         'こそろってるね。だから残りの' + (nSafe >= 2 ? '緑のマス' + nSafe + 'こ' : '緑のマス') +
         'は安全に開けられるよ！';
     }
-    if (h.kind === 'mine') {
-      return 'オレンジで囲った『' + h.number + '』は、あと' + (h.number - h.flags) +
-        'こ地雷がひつよう。隠れマスがちょうど' + h.hiddenCount +
-        'こだから、' + (h.hiddenCount >= 2 ? '赤いマス' + h.hiddenCount + 'こは全部' : 'そのマス（赤）は') +
-        '地雷。🚩を立てよう！';
-    }
-    if (h.firstMove) {
-      return '最初の一手は手がかりが無いので、どこを開けても運だよ。角あたりが無難。';
-    }
-    return 'いま確実にわかるマスは無さそう…ここからは推測。数字の多いところの近くから攻めると手がかりが増えるよ。';
+    return 'オレンジで囲った『' + h.number + '』は、あと' + (h.number - h.flags) +
+      'こ地雷がひつよう。隠れマスがちょうど' + h.hiddenCount +
+      'こだから、' + (h.hiddenCount >= 2 ? '赤いマス' + h.hiddenCount + 'こは全部' : 'そのマス（赤）は') +
+      '地雷。🚩を立てよう！';
   }
   /** ヒントを無効化して、プレイ中なら5秒後に解禁する。 */
   function scheduleHint() {
@@ -186,12 +194,14 @@
     clearHintHighlight();
     if (h.kind === 'safe' || h.kind === 'mine') {
       var cls = h.kind === 'safe' ? 'hint-safe' : 'hint-mine';
-      for (var i = 0; i < h.targets.length; i++) {       // 該当する隠れマスを全部光らせる
+      for (var i = 0; i < h.targets.length; i++) {       // 確定マスを全部光らせる
         var t = cellEl(h.targets[i][0], h.targets[i][1]);
         if (t) t.classList.add(cls);
       }
-      var f = cellEl(h.from[0], h.from[1]);
-      if (f) f.classList.add('hint-from');
+      for (var j = 0; j < h.froms.length; j++) {         // 根拠の数字（定石は2つ）
+        var f = cellEl(h.froms[j][0], h.froms[j][1]);
+        if (f) f.classList.add('hint-from');
+      }
     }
     el.hintMsg.textContent = hintReason(h);
     if (h.kind === 'guess') el.hintMsg.classList.add('is-guess');

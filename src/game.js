@@ -237,28 +237,57 @@
     return game.mineCount - game.flagsCount;
   }
 
+  /** cells（[[r,c],...]）に [r,c] が含まれるか。 */
+  function cellsInclude(cells, rc) {
+    for (var i = 0; i < cells.length; i++) {
+      if (cells[i][0] === rc[0] && cells[i][1] === rc[1]) return true;
+    }
+    return false;
+  }
+  /** small が big の部分集合か。 */
+  function isSubsetCells(small, big) {
+    for (var i = 0; i < small.length; i++) {
+      if (!cellsInclude(big, small[i])) return false;
+    }
+    return true;
+  }
+  /** big にあって small に無いマス。 */
+  function diffCells(big, small) {
+    var res = [];
+    for (var i = 0; i < big.length; i++) {
+      if (!cellsInclude(small, big[i])) res.push(big[i]);
+    }
+    return res;
+  }
+
   /**
-   * 論理ヒント：開封済みの数字マスから「確実に安全／確実に地雷」を1つ見つける。
+   * 論理ヒント：開封済みの数字マスから「確実に安全／確実に地雷」を見つける。
    * 人間と同じ推論（数字＋旗）で判断しつつ、旗が真の地雷であることを条件にして
    * 正しさを保証する（間違った旗には惑わされない）。安全を優先して返す。
    *
+   * 2段階：①基本ルール（単一の数字）②部分集合の法則（2つの数字を見比べる＝定石）。
+   *
    * 戻り値:
-   *   { kind:'safe'|'mine', targets:[[r,c],...], from:[r,c], number, flags, hiddenCount }
-   *     targets はその数字から確定する隠れマス全部（安全なら全部安全／地雷なら全部地雷）。
+   *   { kind:'safe'|'mine', rule:'basic', targets:[[r,c],...], froms:[[r,c]], number, flags, hiddenCount }
+   *   { kind:'safe'|'mine', rule:'subset', targets:[[r,c],...], froms:[[r,c],[r,c]], diffCount }
+   *     targets は確定する隠れマス全部。froms は根拠にした数字マス（基本=1つ／定石=2つ）。
    *   { kind:'guess', firstMove:bool }   ← 確実な手が無い
    */
   function findHint(game) {
     if (!game.minesPlaced) {
       return { kind: 'guess', firstMove: game.revealedCount === 0 };
     }
-    var mineHint = null;
+
+    // 制約を集める：旗が全て真の地雷である数字マスについて、隠れマス集合と「残り必要地雷数」
+    var constraints = [];
+    var tier1mine = null;
     for (var r = 0; r < game.rows; r++) {
       for (var c = 0; c < game.cols; c++) {
         var cell = game.cells[r][c];
         if (cell.state !== REVEALED || cell.adjacent === 0) continue;
 
         var ns = neighborCoords(r, c, game.rows, game.cols);
-        var hidden = [];        // 隠れ（旗でない）マス
+        var hidden = [];
         var flags = 0;
         var flagsAllMines = true;
         for (var i = 0; i < ns.length; i++) {
@@ -266,25 +295,51 @@
           if (nc.state === HIDDEN) hidden.push(ns[i]);
           else if (nc.state === FLAGGED) {
             flags++;
-            if (!nc.mine) flagsAllMines = false; // 旗が真の地雷でない
+            if (!nc.mine) flagsAllMines = false;
           }
         }
-        if (hidden.length === 0) continue;
-        if (!flagsAllMines) continue; // 旗が間違っている数字は使わない＝ヒントの正しさを保証
+        if (hidden.length === 0 || !flagsAllMines) continue;
+        var need = cell.adjacent - flags; // 隠れマスの中にある地雷の数（旗が正しいので確定）
 
-        // ルールA（安全）：旗の数が数字に達している → 残りの隠れマスは全部安全
-        if (flags === cell.adjacent) {
-          return { kind: 'safe', targets: hidden, from: [r, c],
+        // ①基本ルールA（安全）：残り必要地雷が0 → 隠れマスは全部安全（最優先で返す）
+        if (need === 0) {
+          return { kind: 'safe', rule: 'basic', targets: hidden, froms: [[r, c]],
                    number: cell.adjacent, flags: flags, hiddenCount: hidden.length };
         }
-        // ルールB（地雷）：残り必要な地雷数＝隠れマス数 → 隠れマスは全部地雷
-        if (cell.adjacent - flags === hidden.length && !mineHint) {
-          mineHint = { kind: 'mine', targets: hidden, from: [r, c],
-                       number: cell.adjacent, flags: flags, hiddenCount: hidden.length };
+        // ①基本ルールB（地雷）：残り必要地雷＝隠れマス数 → 隠れマスは全部地雷
+        if (need === hidden.length && !tier1mine) {
+          tier1mine = { kind: 'mine', rule: 'basic', targets: hidden, froms: [[r, c]],
+                        number: cell.adjacent, flags: flags, hiddenCount: hidden.length };
+        }
+        constraints.push({ cells: hidden, need: need, from: [r, c] });
+      }
+    }
+
+    // ②部分集合の法則：A.cells ⊊ B.cells のとき、差分マスを確定（定石をカバー）
+    var subsetSafe = null, subsetMine = null;
+    for (var a = 0; a < constraints.length; a++) {
+      for (var b = 0; b < constraints.length; b++) {
+        if (a === b) continue;
+        var A = constraints[a], B = constraints[b];
+        if (A.cells.length >= B.cells.length) continue;   // A を小さい側に
+        if (!isSubsetCells(A.cells, B.cells)) continue;
+        var diff = diffCells(B.cells, A.cells);
+        if (diff.length === 0) continue;
+        var diffNeed = B.need - A.need;                   // 差分マスにある地雷数（必ずこの数）
+        if (diffNeed === 0 && !subsetSafe) {
+          subsetSafe = { kind: 'safe', rule: 'subset', targets: diff,
+                         froms: [A.from, B.from], diffCount: diff.length };
+        } else if (diffNeed === diff.length && !subsetMine) {
+          subsetMine = { kind: 'mine', rule: 'subset', targets: diff,
+                         froms: [A.from, B.from], diffCount: diff.length };
         }
       }
     }
-    if (mineHint) return mineHint;
+
+    // 返す優先順位：基本安全(返済み) → 定石安全 → 基本地雷 → 定石地雷 → 推測
+    if (subsetSafe) return subsetSafe;
+    if (tier1mine) return tier1mine;
+    if (subsetMine) return subsetMine;
     return { kind: 'guess', firstMove: game.revealedCount === 0 };
   }
 
