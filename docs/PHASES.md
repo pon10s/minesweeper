@@ -5,7 +5,7 @@
 
 ## 現在地
 
-- **第2弾（改善）進行中**：フェーズD完了 → フェーズE（ドキュメント更新＋デプロイ整理）へ
+- **第2弾（改善）完了** 🎉 公開URL：https://pon10s.github.io/minesweeper/
 - 初版は全フェーズ完了済み（和音クリックは省略）。
 
 ---
@@ -33,8 +33,8 @@
 - ✅ preview で送信→表示確認（ヒント使用は対象外）
 
 ### フェーズE: ドキュメント更新＋デプロイ整理
-- ⬜ CLAUDE.md/REQUIREMENTS.md 方針更新・DESIGN追記
-- ⬜ git接続・構成整理・push・公開URL確認
+- ✅ CLAUDE.md/REQUIREMENTS.md 方針更新・README作成
+- ✅ git接続・構成整理（merge -s ours）・push・公開URL確認
 
 ---
 

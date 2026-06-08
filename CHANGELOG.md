@@ -4,6 +4,11 @@
 
 ## 2026-06-08（改善 第2弾）
 
+### フェーズE: ドキュメント更新＋デプロイ整理
+- `CLAUDE.md`/`REQUIREMENTS.md`：方針を更新（個人データは端末内、ランキングのみ外部送信。操作＝長押し旗、ヒント、ランキングを反映）。`README.md` 新規作成。
+- デプロイ整理：ローカルを git 接続し、`merge -s ours` で履歴を保持したままリポジトリ構成を `index.html`＋`src/` に統一（旧ルート直下の重複 `game.js/ui.js/main.js/style.css` を削除）。force-push は使わず通常 push。
+- 公開反映：GitHub Pages 再ビルド完了。`https://pon10s.github.io/minesweeper/` で最新版（main.js?v=7 / ranking.js / ms-hint-btn）を配信、旧ファイルは404を確認。
+
 ### フェーズD: オンライン共有ランキング（Supabase）
 - Supabase（無料）に `scores` テーブル＋RLS（誰でも読取可／正しい形のスコアのみ追加可）を作成。anon public キーで接続。
 - `src/ranking.js`（新規）：`submitScore(name, level, time)` / `fetchTop(level, limit)`（REST API）。
