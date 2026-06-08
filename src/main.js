@@ -153,13 +153,16 @@
   /** ヒントの理由文を日本語で組み立てる。 */
   function hintReason(h) {
     if (h.kind === 'safe') {
+      var nSafe = h.targets.length;
       return 'オレンジで囲った『' + h.number + '』のまわりには、もう🚩が' + h.flags +
-        'こそろってるね。だから残りの隠れマス（緑）は安全に開けられるよ！';
+        'こそろってるね。だから残りの' + (nSafe >= 2 ? '緑のマス' + nSafe + 'こ' : '緑のマス') +
+        'は安全に開けられるよ！';
     }
     if (h.kind === 'mine') {
       return 'オレンジで囲った『' + h.number + '』は、あと' + (h.number - h.flags) +
         'こ地雷がひつよう。隠れマスがちょうど' + h.hiddenCount +
-        'こだから、そのマス（赤）は地雷。🚩を立てよう！';
+        'こだから、' + (h.hiddenCount >= 2 ? '赤いマス' + h.hiddenCount + 'こは全部' : 'そのマス（赤）は') +
+        '地雷。🚩を立てよう！';
     }
     if (h.firstMove) {
       return '最初の一手は手がかりが無いので、どこを開けても運だよ。角あたりが無難。';
@@ -182,8 +185,11 @@
     var h = MS.findHint(game);
     clearHintHighlight();
     if (h.kind === 'safe' || h.kind === 'mine') {
-      var t = cellEl(h.target[0], h.target[1]);
-      if (t) t.classList.add(h.kind === 'safe' ? 'hint-safe' : 'hint-mine');
+      var cls = h.kind === 'safe' ? 'hint-safe' : 'hint-mine';
+      for (var i = 0; i < h.targets.length; i++) {       // 該当する隠れマスを全部光らせる
+        var t = cellEl(h.targets[i][0], h.targets[i][1]);
+        if (t) t.classList.add(cls);
+      }
       var f = cellEl(h.from[0], h.from[1]);
       if (f) f.classList.add('hint-from');
     }

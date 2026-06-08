@@ -243,7 +243,8 @@
    * 正しさを保証する（間違った旗には惑わされない）。安全を優先して返す。
    *
    * 戻り値:
-   *   { kind:'safe'|'mine', target:[r,c], from:[r,c], number, flags, hiddenCount }
+   *   { kind:'safe'|'mine', targets:[[r,c],...], from:[r,c], number, flags, hiddenCount }
+   *     targets はその数字から確定する隠れマス全部（安全なら全部安全／地雷なら全部地雷）。
    *   { kind:'guess', firstMove:bool }   ← 確実な手が無い
    */
   function findHint(game) {
@@ -271,14 +272,14 @@
         if (hidden.length === 0) continue;
         if (!flagsAllMines) continue; // 旗が間違っている数字は使わない＝ヒントの正しさを保証
 
-        // ルールA（安全）：旗の数が数字に達している → 残りの隠れマスは安全
+        // ルールA（安全）：旗の数が数字に達している → 残りの隠れマスは全部安全
         if (flags === cell.adjacent) {
-          return { kind: 'safe', target: hidden[0], from: [r, c],
+          return { kind: 'safe', targets: hidden, from: [r, c],
                    number: cell.adjacent, flags: flags, hiddenCount: hidden.length };
         }
         // ルールB（地雷）：残り必要な地雷数＝隠れマス数 → 隠れマスは全部地雷
         if (cell.adjacent - flags === hidden.length && !mineHint) {
-          mineHint = { kind: 'mine', target: hidden[0], from: [r, c],
+          mineHint = { kind: 'mine', targets: hidden, from: [r, c],
                        number: cell.adjacent, flags: flags, hiddenCount: hidden.length };
         }
       }

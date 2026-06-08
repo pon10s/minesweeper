@@ -182,7 +182,8 @@
       MS.toggleFlag(g, 1, 1);      // 中央に正しい旗
       var h = MS.findHint(g);
       eq('findHint A: kind=safe', h.kind, 'safe');
-      if (h.target) check('findHint A: 対象は地雷でない', g.cells[h.target[0]][h.target[1]].mine === false);
+      var allSafe = h.targets.every(function (t) { return g.cells[t[0]][t[1]].mine === false; });
+      check('findHint A: 対象は全部地雷でない', h.targets.length >= 1 && allSafe);
     })();
 
     // 15. findHint：ルールB（地雷）
@@ -192,7 +193,8 @@
       MS.reveal(g, 0, 0);          // (0,0)=3
       var h = MS.findHint(g);
       eq('findHint B: kind=mine', h.kind, 'mine');
-      if (h.target) check('findHint B: 対象は地雷', g.cells[h.target[0]][h.target[1]].mine === true);
+      var allMine = h.targets.every(function (t) { return g.cells[t[0]][t[1]].mine === true; });
+      check('findHint B: 対象3つは全部地雷', h.targets.length === 3 && allMine);
     })();
 
     // 16. findHint：確実な手が無ければ guess
