@@ -48,7 +48,7 @@
   var lastFitWidth = 0;      // 最後にマスサイズを合わせたときの画面幅
 
   // 長押し判定用
-  var LONG_PRESS_MS = 150;   // この時間押し続けたら旗（タップ～0.12秒と差をつけつつ短く）
+  var LONG_PRESS_MS = 120;   // この時間押し続けたら旗（短め。タップ～0.1秒と差をつけつつ旗を出しやすく）
   var MOVE_TOL = 10;         // この距離以上動いたらスクロール扱いでキャンセル
   var pressTimer = null;     // 長押しタイマー
   var pressCell = null;      // 押している対象 {r,c}
