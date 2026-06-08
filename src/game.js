@@ -311,9 +311,12 @@
           tier1mine = { kind: 'mine', rule: 'basic', targets: hidden, froms: [[r, c]],
                         number: cell.adjacent, flags: flags, hiddenCount: hidden.length };
         }
-        constraints.push({ cells: hidden, need: need, from: [r, c] });
+        constraints.push({ cells: hidden, need: need, number: cell.adjacent, from: [r, c] });
       }
     }
+
+    // 基本（ふつうに分かる手）を最優先。基本地雷があれば定石より先に返す。
+    if (tier1mine) return tier1mine;
 
     // ②部分集合の法則：A.cells ⊊ B.cells のとき、差分マスを確定（定石をカバー）
     var subsetSafe = null, subsetMine = null;
@@ -326,19 +329,17 @@
         var diff = diffCells(B.cells, A.cells);
         if (diff.length === 0) continue;
         var diffNeed = B.need - A.need;                   // 差分マスにある地雷数（必ずこの数）
-        if (diffNeed === 0 && !subsetSafe) {
-          subsetSafe = { kind: 'safe', rule: 'subset', targets: diff,
-                         froms: [A.from, B.from], diffCount: diff.length };
-        } else if (diffNeed === diff.length && !subsetMine) {
-          subsetMine = { kind: 'mine', rule: 'subset', targets: diff,
-                         froms: [A.from, B.from], diffCount: diff.length };
-        }
+        var info = {
+          rule: 'subset', targets: diff, common: A.cells, froms: [A.from, B.from],
+          aNum: A.number, aNeed: A.need, bNum: B.number, bNeed: B.need, diffCount: diff.length
+        };
+        if (diffNeed === 0 && !subsetSafe) { info.kind = 'safe'; subsetSafe = info; }
+        else if (diffNeed === diff.length && !subsetMine) { info.kind = 'mine'; subsetMine = info; }
       }
     }
 
-    // 返す優先順位：基本安全(返済み) → 定石安全 → 基本地雷 → 定石地雷 → 推測
+    // 返す優先順位：基本安全(返済み) → 基本地雷(返済み) → 定石安全 → 定石地雷 → 推測
     if (subsetSafe) return subsetSafe;
-    if (tier1mine) return tier1mine;
     if (subsetMine) return subsetMine;
     return { kind: 'guess', firstMove: game.revealedCount === 0 };
   }

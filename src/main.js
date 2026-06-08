@@ -140,9 +140,9 @@
   }
   /** 盤面上のヒント強調と説明文を消す。 */
   function clearHintHighlight() {
-    var hs = el.board.querySelectorAll('.hint-safe, .hint-mine, .hint-from');
+    var hs = el.board.querySelectorAll('.hint-safe, .hint-mine, .hint-from, .hint-common');
     for (var i = 0; i < hs.length; i++) {
-      hs[i].classList.remove('hint-safe', 'hint-mine', 'hint-from');
+      hs[i].classList.remove('hint-safe', 'hint-mine', 'hint-from', 'hint-common');
     }
     if (el.hintMsg) { el.hintMsg.textContent = ''; el.hintMsg.classList.remove('is-guess'); }
   }
@@ -157,25 +157,27 @@
       return 'いま確実にわかるマスは無さそう…ここからは推測。数字の多いところの近くから攻めると手がかりが増えるよ。';
     }
     if (h.rule === 'subset') {
-      // 定石（部分集合の法則）：2つの数字を見くらべる
-      if (h.kind === 'safe') {
-        return 'オレンジの2つの数字を見くらべてね。大きいほうの地雷は、共通の範囲だけで足りるよ。' +
-          'だから外側の緑のマス' + h.diffCount + 'こは安全に開けられる！';
+      // 定石（部分集合の法則）：オレンジ＝2つの数字／青＝共通マス／緑or赤＝確定マス
+      var nCommon = h.common.length;
+      if (h.kind === 'mine') {
+        return 'オレンジの2つの数字を見くらべよう。\n' +
+          '・『' + h.aNum + '』… 青いマス' + nCommon + 'この中に地雷が' + h.aNeed + 'こ。\n' +
+          '・『' + h.bNum + '』… 青いマス＋赤いマスの中に地雷が' + h.bNeed + 'こ。\n' +
+          '青いほうで' + h.aNeed + 'こ決まるから、残り' + (h.bNeed - h.aNeed) +
+          'こは赤いマス' + h.diffCount + 'こに入るしかない。だから赤は全部地雷！🚩';
       }
-      return 'オレンジの2つの数字を見くらべてね。大きいほうの地雷は、共通の範囲ぶんを除くと、' +
-        '外側の' + h.diffCount + 'マスにちょうど残る。だから赤いマス' + h.diffCount + 'こは全部地雷。🚩を立てよう！';
+      return 'オレンジの2つの数字を見くらべよう。\n' +
+        '『' + h.bNum + '』の地雷' + h.bNeed + 'こは、ぜんぶ青いマス（共通）の中でそろうよ（『' + h.aNum + '』がそれを示してる）。\n' +
+        'だから外側の緑のマス' + h.diffCount + 'こには地雷が来ない＝安全に開けられる！';
     }
-    // 基本ルール（単一の数字）
+    // 基本ルール（単一の数字／ふつうに分かる手）
     if (h.kind === 'safe') {
-      var nSafe = h.targets.length;
-      return 'オレンジで囲った『' + h.number + '』のまわりには、もう🚩が' + h.flags +
-        'こそろってるね。だから残りの' + (nSafe >= 2 ? '緑のマス' + nSafe + 'こ' : '緑のマス') +
-        'は安全に開けられるよ！';
+      return 'オレンジの『' + h.number + '』のまわりは、もう🚩が' + h.flags +
+        'こ立ってる（地雷は見つけ済み）。だから残りの開いてないマス' +
+        (h.hiddenCount >= 2 ? h.hiddenCount + 'こ' : '') + '（緑）は安全に開けられるよ！';
     }
-    return 'オレンジで囲った『' + h.number + '』は、あと' + (h.number - h.flags) +
-      'こ地雷がひつよう。隠れマスがちょうど' + h.hiddenCount +
-      'こだから、' + (h.hiddenCount >= 2 ? '赤いマス' + h.hiddenCount + 'こは全部' : 'そのマス（赤）は') +
-      '地雷。🚩を立てよう！';
+    return 'オレンジの『' + h.number + '』のまわりに、開いてない（旗も無い）マスがちょうど' + h.hiddenCount +
+      'こ。数字の' + h.number + 'と同じだから、その' + h.hiddenCount + 'こ（赤）は全部地雷！🚩を立てよう。';
   }
   /** ヒントを無効化して、プレイ中なら5秒後に解禁する。 */
   function scheduleHint() {
@@ -194,11 +196,17 @@
     clearHintHighlight();
     if (h.kind === 'safe' || h.kind === 'mine') {
       var cls = h.kind === 'safe' ? 'hint-safe' : 'hint-mine';
-      for (var i = 0; i < h.targets.length; i++) {       // 確定マスを全部光らせる
+      for (var i = 0; i < h.targets.length; i++) {       // 確定マスを全部光らせる（緑/赤）
         var t = cellEl(h.targets[i][0], h.targets[i][1]);
         if (t) t.classList.add(cls);
       }
-      for (var j = 0; j < h.froms.length; j++) {         // 根拠の数字（定石は2つ）
+      if (h.common) {                                    // 定石：共通マスを青で
+        for (var k = 0; k < h.common.length; k++) {
+          var cm = cellEl(h.common[k][0], h.common[k][1]);
+          if (cm) cm.classList.add('hint-common');
+        }
+      }
+      for (var j = 0; j < h.froms.length; j++) {         // 根拠の数字（定石は2つ・オレンジ）
         var f = cellEl(h.froms[j][0], h.froms[j][1]);
         if (f) f.classList.add('hint-from');
       }

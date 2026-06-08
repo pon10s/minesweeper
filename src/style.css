@@ -200,6 +200,8 @@ html, body {
 /* ヒントの強調表示 */
 /* 注目する数字マス（オレンジの枠） */
 .ms-cell.hint-from { box-shadow: inset 0 0 0 3px #ff8c00; }
+/* 定石の共通マス（青・点滅なし） */
+.ms-cell.hint-common { background: #cfe2ff; box-shadow: inset 0 0 0 3px #2a6fdb; }
 /* 確実に安全（緑・点滅）＝開けてOK */
 .ms-cell.hint-safe {
   background: #c9f3c9;
@@ -226,10 +228,11 @@ html, body {
   min-width: 100%;
   box-sizing: border-box;
   overflow-wrap: anywhere;
+  white-space: pre-line; /* 説明文の改行（\n）を反映 */
   margin-top: 6px;
   min-height: 1.2em;
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.5;
   color: #103010;
 }
 .ms-hint-msg.is-guess { color: #803000; }
