@@ -47,7 +47,7 @@
   var seconds = 0;           // 経過秒
 
   // 長押し判定用
-  var LONG_PRESS_MS = 450;   // この時間押し続けたら旗
+  var LONG_PRESS_MS = 225;   // この時間押し続けたら旗（短めに調整）
   var MOVE_TOL = 10;         // この距離以上動いたらスクロール扱いでキャンセル
   var pressTimer = null;     // 長押しタイマー
   var pressCell = null;      // 押している対象 {r,c}
