@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>マインスイーパー</title>
+  <link rel="stylesheet" href="src/style.css?v=7">
+</head>
+<body>
+  <div class="ms-app">
+    <div class="ms-panel">
+      <!-- ヘッダー：残り地雷カウンター / ニコちゃん / タイマー -->
+      <div class="ms-header">
+        <div class="ms-counter" id="mineCounter">010</div>
+        <button class="ms-face" id="faceBtn" type="button" aria-label="リセット">🙂</button>
+        <div class="ms-counter" id="timer">000</div>
+      </div>
+      <!-- 盤面 -->
+      <div class="ms-board" id="board"></div>
+      <!-- ヒント（盤面のすぐ下・全幅） -->
+      <button class="ms-btn ms-hint-btn" id="hintBtn" type="button" disabled>💡 ヒント</button>
+    </div>
+
+    <!-- 下部コントロール -->
+    <div class="ms-controls">
+      <div class="ms-row ms-difficulty">
+        <span class="ms-label">難易度</span>
+        <button class="ms-btn is-active" data-level="beginner" type="button">初級</button>
+        <button class="ms-btn" data-level="intermediate" type="button">中級</button>
+        <button class="ms-btn" data-level="expert" type="button">上級</button>
+      </div>
+      <div class="ms-row ms-hint">
+        <span class="ms-label">操作</span>
+        <span class="ms-help">タップ＝開く / 長押し＝🚩旗</span>
+      </div>
+      <div class="ms-row ms-actions">
+        <button class="ms-btn" id="rankBtn" type="button">🏆 ランキング</button>
+      </div>
+      <div class="ms-row ms-note">
+        <span class="ms-help">💡ヒントを使うとランキングに載りません</span>
+      </div>
+      <div class="ms-row ms-best">
+        <span class="ms-label">ベスト</span>
+        <span id="bestTime">--:--</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 再利用モーダル（確認・ランキング等） -->
+  <div class="ms-modal-overlay" id="modalOverlay" hidden>
+    <div class="ms-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="ms-modal-title" id="modalTitle"></div>
+      <div class="ms-modal-body" id="modalBody"></div>
+      <div class="ms-modal-actions" id="modalActions"></div>
+    </div>
+  </div>
+
+  <script src="src/game.js?v=3"></script>
+  <script src="src/ui.js?v=3"></script>
+  <script src="src/ranking.js?v=5"></script>
+  <script src="src/main.js?v=7"></script>
+</body>
+</html>
