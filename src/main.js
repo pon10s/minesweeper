@@ -80,8 +80,8 @@
   function startTimer() {
     if (timerId) return;
     timerId = setInterval(function () {
-      seconds = Math.min(seconds + 1, 999);
-      UI.renderCounter(el.timer, seconds);
+      seconds = seconds + 1;                       // 実時間は上限なしで測り続ける
+      UI.renderCounter(el.timer, seconds % 1000);  // 表示は3桁ループ（999の次は000）
     }, 1000);
   }
   function stopTimer() {
