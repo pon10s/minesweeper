@@ -174,6 +174,46 @@
       check('hint: 旗を除いた安全マスを返す', pos && pos[0] === 1 && pos[1] === 1);
     })();
 
+    // 14. findHint：ルールA（安全）
+    (function () {
+      var g = MS.createGame(3, 3, 1);
+      MS.setMines(g, [[1, 1]]);    // 地雷は中央
+      MS.reveal(g, 0, 0);          // 角=1（連鎖せず1マス）
+      MS.toggleFlag(g, 1, 1);      // 中央に正しい旗
+      var h = MS.findHint(g);
+      eq('findHint A: kind=safe', h.kind, 'safe');
+      if (h.target) check('findHint A: 対象は地雷でない', g.cells[h.target[0]][h.target[1]].mine === false);
+    })();
+
+    // 15. findHint：ルールB（地雷）
+    (function () {
+      var g = MS.createGame(3, 3, 3);
+      MS.setMines(g, [[0, 1], [1, 0], [1, 1]]); // (0,0)の周り3つが全部地雷
+      MS.reveal(g, 0, 0);          // (0,0)=3
+      var h = MS.findHint(g);
+      eq('findHint B: kind=mine', h.kind, 'mine');
+      if (h.target) check('findHint B: 対象は地雷', g.cells[h.target[0]][h.target[1]].mine === true);
+    })();
+
+    // 16. findHint：確実な手が無ければ guess
+    (function () {
+      var g = MS.createGame(3, 3, 1);
+      MS.setMines(g, [[1, 1]]);    // 盤面はあるが、まだ何も開いていない
+      var h = MS.findHint(g);
+      eq('findHint: 手がかり無しは guess', h.kind, 'guess');
+    })();
+
+    // 17. findHint：間違った旗には惑わされない（誤旗→guess、誤safeを出さない）
+    (function () {
+      var g = MS.createGame(3, 3, 1);
+      MS.setMines(g, [[1, 1]]);    // 地雷は中央
+      MS.reveal(g, 0, 0);          // (0,0)=1
+      MS.toggleFlag(g, 0, 1);      // (0,1)に“間違った”旗（地雷でない）
+      var h = MS.findHint(g);
+      // (0,0)は誤旗を含むので使わない → 確実な手なし
+      eq('findHint: 誤旗の数字は使わず guess', h.kind, 'guess');
+    })();
+
     render();
   }
 

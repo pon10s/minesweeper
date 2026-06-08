@@ -238,6 +238,56 @@
   }
 
   /**
+   * 論理ヒント：開封済みの数字マスから「確実に安全／確実に地雷」を1つ見つける。
+   * 人間と同じ推論（数字＋旗）で判断しつつ、旗が真の地雷であることを条件にして
+   * 正しさを保証する（間違った旗には惑わされない）。安全を優先して返す。
+   *
+   * 戻り値:
+   *   { kind:'safe'|'mine', target:[r,c], from:[r,c], number, flags, hiddenCount }
+   *   { kind:'guess', firstMove:bool }   ← 確実な手が無い
+   */
+  function findHint(game) {
+    if (!game.minesPlaced) {
+      return { kind: 'guess', firstMove: game.revealedCount === 0 };
+    }
+    var mineHint = null;
+    for (var r = 0; r < game.rows; r++) {
+      for (var c = 0; c < game.cols; c++) {
+        var cell = game.cells[r][c];
+        if (cell.state !== REVEALED || cell.adjacent === 0) continue;
+
+        var ns = neighborCoords(r, c, game.rows, game.cols);
+        var hidden = [];        // 隠れ（旗でない）マス
+        var flags = 0;
+        var flagsAllMines = true;
+        for (var i = 0; i < ns.length; i++) {
+          var nc = game.cells[ns[i][0]][ns[i][1]];
+          if (nc.state === HIDDEN) hidden.push(ns[i]);
+          else if (nc.state === FLAGGED) {
+            flags++;
+            if (!nc.mine) flagsAllMines = false; // 旗が真の地雷でない
+          }
+        }
+        if (hidden.length === 0) continue;
+        if (!flagsAllMines) continue; // 旗が間違っている数字は使わない＝ヒントの正しさを保証
+
+        // ルールA（安全）：旗の数が数字に達している → 残りの隠れマスは安全
+        if (flags === cell.adjacent) {
+          return { kind: 'safe', target: hidden[0], from: [r, c],
+                   number: cell.adjacent, flags: flags, hiddenCount: hidden.length };
+        }
+        // ルールB（地雷）：残り必要な地雷数＝隠れマス数 → 隠れマスは全部地雷
+        if (cell.adjacent - flags === hidden.length && !mineHint) {
+          mineHint = { kind: 'mine', target: hidden[0], from: [r, c],
+                       number: cell.adjacent, flags: flags, hiddenCount: hidden.length };
+        }
+      }
+    }
+    if (mineHint) return mineHint;
+    return { kind: 'guess', firstMove: game.revealedCount === 0 };
+  }
+
+  /**
    * ヒント用：安全に開けるマス（未開封・非地雷・旗でない）を1つ返す。
    * 開封済みマスに隣接するものを優先する（「次の一手」らしくなる）。なければ null。
    * rng はテスト用に差し替え可能。
@@ -283,7 +333,8 @@
     toggleFlag: toggleFlag,
     chord: chord,
     minesRemaining: minesRemaining,
-    findSafeCell: findSafeCell
+    findSafeCell: findSafeCell,
+    findHint: findHint
   };
 
   // Node 等でも require できるように（任意）

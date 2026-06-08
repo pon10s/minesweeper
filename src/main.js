@@ -67,6 +67,7 @@
     el.bestTime = document.getElementById('bestTime');
     el.difficultyBtns = document.querySelectorAll('.ms-difficulty .ms-btn');
     el.hintBtn = document.getElementById('hintBtn');
+    el.hintMsg = document.getElementById('hintMsg');
     el.rankBtn = document.getElementById('rankBtn');
   }
 
@@ -126,6 +127,7 @@
     refreshStatus();
     showBest(currentLevel);
     // ヒントは新ゲームでリセット（開始前は押せない）
+    clearHintHighlight();
     hintUsed = false;
     if (hintTimer) { clearTimeout(hintTimer); hintTimer = null; }
     setHintEnabled(false);
@@ -136,10 +138,33 @@
   function setHintEnabled(on) {
     if (el.hintBtn) el.hintBtn.disabled = !on;
   }
-  /** 盤面上のヒント点滅を消す。 */
+  /** 盤面上のヒント強調と説明文を消す。 */
   function clearHintHighlight() {
-    var h = el.board.querySelector('.ms-cell.hint');
-    if (h) h.classList.remove('hint');
+    var hs = el.board.querySelectorAll('.hint-safe, .hint-mine, .hint-from');
+    for (var i = 0; i < hs.length; i++) {
+      hs[i].classList.remove('hint-safe', 'hint-mine', 'hint-from');
+    }
+    if (el.hintMsg) { el.hintMsg.textContent = ''; el.hintMsg.classList.remove('is-guess'); }
+  }
+
+  /** 盤面の (r,c) のマス要素を返す。 */
+  function cellEl(r, c) { return el.board.children[r * game.cols + c]; }
+
+  /** ヒントの理由文を日本語で組み立てる。 */
+  function hintReason(h) {
+    if (h.kind === 'safe') {
+      return 'オレンジで囲った『' + h.number + '』のまわりには、もう🚩が' + h.flags +
+        'こそろってるね。だから残りの隠れマス（緑）は安全に開けられるよ！';
+    }
+    if (h.kind === 'mine') {
+      return 'オレンジで囲った『' + h.number + '』は、あと' + (h.number - h.flags) +
+        'こ地雷がひつよう。隠れマスがちょうど' + h.hiddenCount +
+        'こだから、そのマス（赤）は地雷。🚩を立てよう！';
+    }
+    if (h.firstMove) {
+      return '最初の一手は手がかりが無いので、どこを開けても運だよ。角あたりが無難。';
+    }
+    return 'いま確実にわかるマスは無さそう…ここからは推測。数字の多いところの近くから攻めると手がかりが増えるよ。';
   }
   /** ヒントを無効化して、プレイ中なら5秒後に解禁する。 */
   function scheduleHint() {
@@ -151,21 +176,26 @@
       }, HINT_COOLDOWN_MS);
     }
   }
-  /** ヒント押下：安全マスを1つ光らせる（開けるのは自分）。 */
+  /** ヒント押下：確実な「安全（緑）／地雷（赤）」と理由を表示（操作は自分）。 */
   function onHint() {
     if (el.hintBtn.disabled || game.status !== MS.PLAYING) return;
-    var pos = MS.findSafeCell(game);
-    if (!pos) return;
+    var h = MS.findHint(game);
     clearHintHighlight();
-    var idx = pos[0] * game.cols + pos[1];
-    var cellEl = el.board.children[idx];
-    if (cellEl) cellEl.classList.add('hint');
+    if (h.kind === 'safe' || h.kind === 'mine') {
+      var t = cellEl(h.target[0], h.target[1]);
+      if (t) t.classList.add(h.kind === 'safe' ? 'hint-safe' : 'hint-mine');
+      var f = cellEl(h.from[0], h.from[1]);
+      if (f) f.classList.add('hint-from');
+    }
+    el.hintMsg.textContent = hintReason(h);
+    if (h.kind === 'guess') el.hintMsg.classList.add('is-guess');
     hintUsed = true;          // この局面はベスト/ランキング対象外
-    scheduleHint();           // 使ったら再び10秒待ち
+    scheduleHint();           // 使ったら再びクールダウン
   }
 
   /** 操作後の共通処理：タイマー・ベスト・再描画・ヒント再カウント。 */
   function applyResult() {
+    clearHintHighlight(); // 何か操作したらヒント表示は消す
     // 最初に開いた瞬間（READY→PLAYING）にタイマー開始
     if (game.status === MS.PLAYING) startTimer();
     if (game.status === MS.WON || game.status === MS.LOST) {
