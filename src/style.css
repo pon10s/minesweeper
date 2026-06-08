@@ -95,6 +95,9 @@ html, body {
   grid-auto-rows: var(--cell);
   border: 4px solid;
   border-color: var(--dark) var(--light) var(--light) var(--dark);
+  /* 枠をマスにぴったり合わせ、中央寄せ（盤面がヘッダーより狭くても右に空白が出ない） */
+  width: fit-content;
+  margin: 0 auto;
 }
 
 /* マス共通 */
