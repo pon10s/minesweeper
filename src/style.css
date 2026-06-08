@@ -75,6 +75,7 @@ html, body {
   border: 3px solid;
   border-color: var(--light) var(--dark) var(--dark) var(--light);
   cursor: pointer;
+  touch-action: manipulation;
 }
 .ms-face:active { border-color: var(--dark) var(--light) var(--light) var(--dark); }
 
@@ -111,6 +112,8 @@ html, body {
   font-size: calc(var(--cell) * 0.6);
   line-height: 1;
   cursor: pointer;
+  /* マスのダブルタップ拡大を無効化（ピンチズームは維持）。素早い連打で拡大が戻るのを防ぐ */
+  touch-action: manipulation;
 }
 
 /* 未開封（出っ張り） */
@@ -169,6 +172,7 @@ html, body {
   border: 3px solid;
   border-color: var(--light) var(--dark) var(--dark) var(--light);
   cursor: pointer;
+  touch-action: manipulation;
 }
 .ms-btn:active { border-color: var(--dark) var(--light) var(--light) var(--dark); }
 /* 選択中のボタン（へこみ＋強調） */
