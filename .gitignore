@@ -1,1 +1,8 @@
 bot/
+docs/
+tests/
+.claude/
+CLAUDE.md
+CHANGELOG.md
+README.md
+REQUIREMENTS.md
