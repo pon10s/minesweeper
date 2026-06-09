@@ -472,14 +472,8 @@
     cacheDom();
     bindEvents();
     newGame('beginner');
-    // デバッグ用に公開（プレビュー検証で利用）
-    global._ms = {
-      get game() { return game; },
-      get hintUsed() { return hintUsed; },
-      el: el, newGame: newGame, setLevel: setLevel,
-      handleTap: handleTap, handleLongPress: handleLongPress,
-      onHint: onHint, setHintEnabled: setHintEnabled
-    };
+    delete global.MS;
+    delete global.UI;
   }
 
   global.addEventListener('DOMContentLoaded', init);
