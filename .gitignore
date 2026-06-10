@@ -1,5 +1,6 @@
 bot/
 docs/
+supabase/.temp/
 tests/
 .claude/
 CLAUDE.md
