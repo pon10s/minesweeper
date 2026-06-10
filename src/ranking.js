@@ -1,8 +1,5 @@
 /*
- * ranking.js — オンライン共有ランキング（Supabase REST API）
- *
- * anon public キーは「公開してよい」種類のキー。アクセス制御は Supabase 側の
- * RLS ポリシー（読み取り可／正しい形のスコア追加のみ可）で守られている。
+ * ranking.js — オンライン共有ランキング（Supabase）
  */
 (function (global) {
   'use strict';
@@ -18,12 +15,23 @@
     'Content-Type': 'application/json'
   };
 
-  /** スコアをEdge Functionへ送信する。サーバー側で手順を検証してからDBに登録する。 */
+  var KP = [0x5b, 0x27, 0x9e, 0x42, 0xa1, 0x6d, 0xc3, 0x14, 0x7f, 0x38, 0xe5, 0x91, 0x2a, 0xb6, 0x4c, 0xd0];
+
+  function pack(obj) {
+    var bytes = new TextEncoder().encode(JSON.stringify(obj));
+    var out = new Uint8Array(bytes.length);
+    for (var i = 0; i < bytes.length; i++) out[i] = bytes[i] ^ KP[i % KP.length];
+    var bin = '';
+    for (var j = 0; j < out.length; j++) bin += String.fromCharCode(out[j]);
+    return btoa(bin);
+  }
+
   function submitScore(name, level, time, mines, moves) {
+    var d = pack({ name: name, level: level, time: time, mines: mines, moves: moves });
     return fetch(SUBMIT_ENDPOINT, {
       method: 'POST',
       headers: HEADERS,
-      body: JSON.stringify({ name: name, level: level, time: time, mines: mines, moves: moves })
+      body: JSON.stringify({ d: d })
     }).then(function (res) {
       if (!res.ok) throw new Error('送信に失敗しました (' + res.status + ')');
       return true;

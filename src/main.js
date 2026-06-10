@@ -60,9 +60,9 @@
   var hintTimer = null;         // ヒント解禁タイマー
   var hintUsed = false;         // このゲームでヒントを使ったか（使うとベスト/ランキング対象外）
 
-  var moveLog = [];             // 手順ログ [{a,r,c,t}, ...]
-  var gameStartMs = null;       // ゲーム開始時刻（ms）
-  var minePositions = null;     // 地雷座標 [[r,c],...]
+  var moveLog = [];
+  var gameStartMs = null;
+  var minePositions = null;
 
   function cacheDom() {
     el.board = document.getElementById('board');

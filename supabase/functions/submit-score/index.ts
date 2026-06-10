@@ -1,10 +1,9 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
-// 難易度設定
 const LEVELS: Record<string, { rows: number; cols: number; mines: number; minTime: number }> = {
   beginner:     { rows: 9,  cols: 9,  mines: 10, minTime: 1  },
-  intermediate: { rows: 16, cols: 16, mines: 40, minTime: 5  },
-  expert:       { rows: 30, cols: 16, mines: 99, minTime: 20 }
+  intermediate: { rows: 16, cols: 16, mines: 40, minTime: 9  },
+  expert:       { rows: 30, cols: 16, mines: 99, minTime: 24 }
 }
 
 type CellState = 'hidden' | 'flagged' | 'revealed'
@@ -17,6 +16,8 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, apikey'
 }
 
+const NOTICE = 'とうろくできなかったみたい…ズルはダメだよ♡'
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -24,7 +25,19 @@ function json(body: unknown, status = 200) {
   })
 }
 
-// 周囲8マスの座標を返す
+function reject() {
+  return json({ error: NOTICE }, 400)
+}
+
+const KP = [0x5b, 0x27, 0x9e, 0x42, 0xa1, 0x6d, 0xc3, 0x14, 0x7f, 0x38, 0xe5, 0x91, 0x2a, 0xb6, 0x4c, 0xd0]
+
+function unpack(d: string): unknown {
+  const bin = atob(d)
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i) ^ KP[i % KP.length]
+  return JSON.parse(new TextDecoder().decode(bytes))
+}
+
 function neighbors(r: number, c: number, rows: number, cols: number): [number, number][] {
   const res: [number, number][] = []
   for (let dr = -1; dr <= 1; dr++) {
@@ -37,7 +50,6 @@ function neighbors(r: number, c: number, rows: number, cols: number): [number, n
   return res
 }
 
-// flood fill（クライアントと同じロジック）。開封したマス数を返す
 function floodReveal(cells: Cell[][], r: number, c: number, rows: number, cols: number): number {
   const stack: [number, number][] = [[r, c]]
   let count = 0
@@ -59,8 +71,7 @@ function floodReveal(cells: Cell[][], r: number, c: number, rows: number, cols: 
   return count
 }
 
-// ゲームを再現して手順が正当かを検証する
-function validateGame(
+function checkMoves(
   config: { rows: number; cols: number; mines: number; minTime: number },
   mines: number[][],
   moves: Move[],
@@ -68,18 +79,15 @@ function validateGame(
 ): boolean {
   const { rows, cols } = config
 
-  // 盤面を構築
   const cells: Cell[][] = Array.from({ length: rows }, () =>
     Array.from({ length: cols }, () => ({ mine: false, adjacent: 0, state: 'hidden' as CellState }))
   )
 
-  // 地雷を配置
   for (const [mr, mc] of mines) {
     if (mr < 0 || mr >= rows || mc < 0 || mc >= cols) return false
     cells[mr][mc].mine = true
   }
 
-  // 周囲地雷数を計算
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (cells[r][c].mine) continue
@@ -90,40 +98,39 @@ function validateGame(
 
   let revealedCount = 0
   let prevT = -1
+  let tooFast = 0
 
   for (const move of moves) {
     const { a, r, c, t } = move
     if (typeof r !== 'number' || typeof c !== 'number' || typeof t !== 'number') return false
     if (r < 0 || r >= rows || c < 0 || c >= cols) return false
-    if (t < prevT) return false  // 時刻は単調増加でなければならない
+    if (t < prevT) return false
+    if (prevT >= 0 && t - prevT < 3) tooFast++
     prevT = t
 
     const cell = cells[r][c]
 
     if (a === 'r') {
-      // 開く：hiddenでなければ不正（cascade済みのマスを再クリックしている）
       if (cell.state !== 'hidden') return false
-      if (cell.mine) return false  // 勝利ゲームで地雷を踏むのは不正
+      if (cell.mine) return false
       revealedCount += floodReveal(cells, r, c, rows, cols)
     } else if (a === 'f') {
-      // 旗を立てる
       if (cell.state !== 'hidden') return false
       cell.state = 'flagged'
     } else if (a === 'u') {
-      // 旗を外す
       if (cell.state !== 'flagged') return false
       cell.state = 'hidden'
     } else {
-      return false  // 不明なアクション
+      return false
     }
   }
 
-  // 勝利条件：地雷以外の全マスが開封済み
   if (revealedCount !== rows * cols - config.mines) return false
 
-  // タイム整合性：最後の手のt（ms）をsecに変換してdeclaredTimeと照合
   const lastT = moves[moves.length - 1].t
   if (Math.abs(Math.round(lastT / 1000) - declaredTime) > 3) return false
+  if (Math.round(lastT / 1000) < config.minTime) return false
+  if (tooFast > moves.length * 0.5) return false
 
   return true
 }
@@ -136,45 +143,39 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Method Not Allowed' }, 405)
   }
 
-  let body: { name: string; level: string; time: number; mines: number[][]; moves: Move[] }
+  let payload: { name: string; level: string; time: number; mines: number[][]; moves: Move[] }
   try {
-    body = await req.json()
+    const outer = await req.json()
+    payload = unpack(outer.d) as typeof payload
   } catch {
-    return json({ error: '不正なリクエストです' }, 400)
+    return reject()
   }
 
-  const { name, level, time, mines, moves } = body
+  const { name, level, time, mines, moves } = payload
 
-  // 名前チェック
   if (!name || typeof name !== 'string' || name.trim().length === 0 || name.trim().length > 20) {
-    return json({ error: '名前が無効です' }, 400)
+    return reject()
   }
 
-  // 難易度チェック
   const config = LEVELS[level]
-  if (!config) return json({ error: '難易度が無効です' }, 400)
+  if (!config) return reject()
 
-  // タイムチェック
   if (typeof time !== 'number' || !Number.isInteger(time) || time < config.minTime || time > 999) {
-    return json({ error: 'タイムが無効です' }, 400)
+    return reject()
   }
 
-  // 地雷データチェック
   if (!Array.isArray(mines) || mines.length !== config.mines) {
-    return json({ error: '地雷データが無効です' }, 400)
+    return reject()
   }
 
-  // 手順データチェック
   if (!Array.isArray(moves) || moves.length === 0 || moves.length > 10000) {
-    return json({ error: '手順データが無効です' }, 400)
+    return reject()
   }
 
-  // ゲームを再現して手順を検証
-  if (!validateGame(config, mines, moves, time)) {
-    return json({ error: '手順の検証に失敗しました' }, 400)
+  if (!checkMoves(config, mines, moves, time)) {
+    return reject()
   }
 
-  // service_role キーでDBに登録（anonキーでの直接INSERTは禁止）
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -184,7 +185,7 @@ Deno.serve(async (req: Request) => {
     .from('scores')
     .insert({ name: name.trim(), level, time })
 
-  if (error) return json({ error: 'データベースエラー' }, 500)
+  if (error) return reject()
 
   return json({ ok: true })
 })
