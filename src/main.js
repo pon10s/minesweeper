@@ -4,7 +4,7 @@
  */
 (function (global) {
   'use strict';
-  var MS = global.MS, UI = global.UI;
+  var MS = global.MS, UI = global.UI, Ranking = global.Ranking;
 
   // 難易度プリセット（マス数・地雷数は本家通り）
   // 上級は本家の 16行×30列（横長）を、スマホの縦長画面に収めるため
@@ -59,6 +59,10 @@
   var HINT_COOLDOWN_MS = 5000;  // 最後の操作から5秒でヒント解禁（それまではボタン非活性）
   var hintTimer = null;         // ヒント解禁タイマー
   var hintUsed = false;         // このゲームでヒントを使ったか（使うとベスト/ランキング対象外）
+
+  var moveLog = [];             // 手順ログ [{a,r,c,t}, ...]
+  var gameStartMs = null;       // ゲーム開始時刻（ms）
+  var minePositions = null;     // 地雷座標 [[r,c],...]
 
   function cacheDom() {
     el.board = document.getElementById('board');
@@ -133,6 +137,9 @@
     hintUsed = false;
     if (hintTimer) { clearTimeout(hintTimer); hintTimer = null; }
     setHintEnabled(false);
+    moveLog = [];
+    gameStartMs = null;
+    minePositions = null;
   }
 
   // --- ヒント ---
@@ -249,11 +256,11 @@
   /** クリア時：ヒント未使用＆TOP10入りできるタイムなら、名前入力→登録の案内を出す。 */
   function onWin() {
     if (hintUsed) return;                 // ヒント使用は対象外
-    if (!global.Ranking || !global.Ranking.enabled) return;
+    if (!Ranking || !Ranking.enabled) return;
     var clearedLevel = currentLevel;
     var clearedTime = seconds;
     // 現在のTOP10を見て、ランクインできる時だけ登録案内を出す
-    global.Ranking.fetchTop(clearedLevel, 10).then(function (rows) {
+    Ranking.fetchTop(clearedLevel, 10).then(function (rows) {
       var eligible = rows.length < 10 || clearedTime < rows[rows.length - 1].time;
       if (eligible) promptNameAndSubmit(clearedLevel, clearedTime);
     }).catch(function () {
@@ -285,7 +292,7 @@
 
   /** スコアを送信して、その難易度のランキングを表示する。 */
   function submitAndShowRanking(name, level, time) {
-    global.Ranking.submitScore(name, level, time)
+    Ranking.submitScore(name, level, time, minePositions || [], moveLog.slice())
       .then(function () { showRanking(level); })
       .catch(function () {
         UI.openModal({
@@ -312,7 +319,7 @@
     function load(lv) {
       var body = document.getElementById('rankBody');
       if (body) body.innerHTML = '読み込み中...';
-      global.Ranking.fetchTop(lv, 10)
+      Ranking.fetchTop(lv, 10)
         .then(function (rows) { var b = document.getElementById('rankBody'); if (b) b.innerHTML = renderRankList(rows); })
         .catch(function () { var b = document.getElementById('rankBody'); if (b) b.innerHTML = '<div class="rank-empty">読み込みに失敗しました。</div>'; });
     }
@@ -334,9 +341,22 @@
     if (game.status === MS.WON || game.status === MS.LOST) return;
     var cell = game.cells[r][c];
     if (cell.state === MS.FLAGGED) {
-      MS.toggleFlag(game, r, c); // 旗を外す
+      var t = gameStartMs ? Date.now() - gameStartMs : 0;
+      moveLog.push({ a: 'u', r: r, c: c, t: t });
+      MS.toggleFlag(game, r, c);
     } else if (cell.state === MS.HIDDEN) {
-      MS.reveal(game, r, c);     // 開く
+      if (!gameStartMs) gameStartMs = Date.now();
+      var t = Date.now() - gameStartMs;
+      moveLog.push({ a: 'r', r: r, c: c, t: t });
+      MS.reveal(game, r, c);
+      if (game.minesPlaced && !minePositions) {
+        minePositions = [];
+        for (var mr = 0; mr < game.rows; mr++) {
+          for (var mc = 0; mc < game.cols; mc++) {
+            if (game.cells[mr][mc].mine) minePositions.push([mr, mc]);
+          }
+        }
+      }
     } else {
       return;
     }
@@ -348,7 +368,9 @@
     if (game.status === MS.WON || game.status === MS.LOST) return;
     var cell = game.cells[r][c];
     if (cell.state === MS.HIDDEN || cell.state === MS.FLAGGED) {
-      MS.toggleFlag(game, r, c); // HIDDEN→旗 / FLAGGED→解除
+      var t = gameStartMs ? Date.now() - gameStartMs : 0;
+      moveLog.push({ a: cell.state === MS.HIDDEN ? 'f' : 'u', r: r, c: c, t: t });
+      MS.toggleFlag(game, r, c);
       applyResult();
     }
   }
@@ -474,6 +496,7 @@
     newGame('beginner');
     delete global.MS;
     delete global.UI;
+    delete global.Ranking;
   }
 
   global.addEventListener('DOMContentLoaded', init);

@@ -10,19 +10,20 @@
   var SUPABASE_URL = 'https://bbgrxlryalrewsjuscyk.supabase.co';
   var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJiZ3J4bHJ5YWxyZXdzanVzY3lrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjQ1ODgsImV4cCI6MjA5NjIwMDU4OH0.h-b7z2PwPFNj8IWyng_u_x8d1GTlJ4Yh1x90D3cqO9s';
 
-  var ENDPOINT = SUPABASE_URL + '/rest/v1/scores';
+  var SCORES_ENDPOINT  = SUPABASE_URL + '/rest/v1/scores';
+  var SUBMIT_ENDPOINT  = SUPABASE_URL + '/functions/v1/submit-score';
   var HEADERS = {
     'apikey': SUPABASE_ANON_KEY,
     'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
     'Content-Type': 'application/json'
   };
 
-  /** スコアを送信する。成功で true を返す Promise。 */
-  function submitScore(name, level, time) {
-    return fetch(ENDPOINT, {
+  /** スコアをEdge Functionへ送信する。サーバー側で手順を検証してからDBに登録する。 */
+  function submitScore(name, level, time, mines, moves) {
+    return fetch(SUBMIT_ENDPOINT, {
       method: 'POST',
       headers: HEADERS,
-      body: JSON.stringify({ name: name, level: level, time: time })
+      body: JSON.stringify({ name: name, level: level, time: time, mines: mines, moves: moves })
     }).then(function (res) {
       if (!res.ok) throw new Error('送信に失敗しました (' + res.status + ')');
       return true;
@@ -32,7 +33,7 @@
   /** 指定難易度のTOP（タイム昇順）を取得する Promise。 */
   function fetchTop(level, limit) {
     limit = limit || 10;
-    var url = ENDPOINT +
+    var url = SCORES_ENDPOINT +
       '?select=name,time,created_at' +
       '&level=eq.' + encodeURIComponent(level) +
       '&order=time.asc&limit=' + limit;
